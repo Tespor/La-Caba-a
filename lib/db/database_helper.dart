@@ -1,3 +1,6 @@
+import 'dart:io';
+import 'dart:typed_data';
+import 'package:path_provider/path_provider.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import 'package:path/path.dart';
 import '../models/categoria.dart';
@@ -6,16 +9,7 @@ import '../models/pedido.dart';
 import '../models/pedido_detalle.dart';
 import '../models/producto_consumible.dart';
 import '../models/consumible.dart';
-import 'dart:io';
-
-Future<String> getDatabasePath() async {
-  // Carpeta del usuario para almacenar la DB (evita permisos de Program Files)
-  final folder = join(Platform.environment['USERPROFILE']!, 'LaCabana');
-  if (!Directory(folder).existsSync()) {
-    Directory(folder).createSync(recursive: true);
-  }
-  return join(folder, 'la_cabana.db');
-}
+import 'package:flutter/services.dart' show rootBundle;
 
 class DatabaseHelper {
   static final DatabaseHelper instance = DatabaseHelper._init();
@@ -30,15 +24,60 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, filePath);
+    final dbPath = await getApplicationDocumentsDirectory();
+    final path = join(dbPath.path, filePath);
 
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: _createDB, // Solo corre una vez, cuando la BD no existe
-    );
+    final exists = await File(path).exists();
+
+    if (!exists) {
+      // Copiar desde assets
+      ByteData data = await rootBundle.load("assets/db/la_cabana.db");
+      List<int> bytes = data.buffer.asUint8List(
+        data.offsetInBytes,
+        data.lengthInBytes,
+      );
+      await File(path).writeAsBytes(bytes, flush: true);
+    }
+    return await openDatabase(path);
   }
+
+  //para usar la base de datos desde la carpeta .dart_tool
+  // Future<Database> _initDB(String filePath) async {
+  //   final dbPath = await getDatabasesPath();
+  //   final path = join(dbPath, filePath);
+
+  //   return await openDatabase(
+  //     path,
+  //     version: 1,
+  //     onCreate: _createDB, // Solo corre una vez, cuando la BD no existe
+  //   );
+  // }
+
+  //Para borrar y copiar siempre la DB desde assets (desarrollo)
+  //   Future<Database> _initDB(String filePath) async {
+  //   // 📌 Ruta de almacenamiento interno de la app
+  //   final dbDir = await getApplicationDocumentsDirectory();
+  //   final path = join(dbDir.path, filePath);
+
+  //   // 📌 Verificar si existe la DB y eliminarla
+  //   if (await File(path).exists()) {
+  //     print("🗑️ Eliminando base de datos vieja en: $path");
+  //     await File(path).delete();
+  //   }
+
+  //   // 📌 Copiar la DB desde assets
+  //   ByteData data = await rootBundle.load("assets/db/la_cabana.db");
+  //   List<int> bytes = data.buffer.asUint8List(
+  //     data.offsetInBytes,
+  //     data.lengthInBytes,
+  //   );
+
+  //   await File(path).writeAsBytes(bytes, flush: true);
+  //   print("✅ Base de datos copiada desde assets a: $path");
+
+  //   // 📌 Abrir la nueva base de datos
+  //   return await openDatabase(path);
+  // }
 
   Future _createDB(Database db, int version) async {
     await db.execute('''
@@ -55,7 +94,7 @@ class DatabaseHelper {
         precio REAL NOT NULL,
         descripcion TEXT,
         categoria_id INTEGER NOT NULL,
-        imagen TEXT,
+        imagen BLOB,
         FOREIGN KEY (categoria_id) REFERENCES categorias(id)
       )
     ''');

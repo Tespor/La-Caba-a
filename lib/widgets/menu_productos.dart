@@ -60,7 +60,7 @@ class _HoverGlowCardState extends State<HoverGlowCard> {
 
   @override
   Widget build(BuildContext context) {
-  bool  existeImagen = widget.product.imagen != null && widget.product.imagen!.isNotEmpty;
+  bool existeImagen = widget.product.imagen != null && widget.product.imagen!.isNotEmpty;
     return MouseRegion(
       cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _hovering = true),
@@ -192,11 +192,13 @@ class _HoverGlowCardState extends State<HoverGlowCard> {
                     duration: const Duration(milliseconds: 300),
                     curve: Curves.easeInOut,
                     child: existeImagen ?
-                      Image.file(File(widget.product.imagen!),
-                      fit: BoxFit.cover,
-                      width: double.infinity,
-                      height: double.infinity,
-                    ) : Container(color: Colors.grey.shade200,),
+                      Image.memory(
+                        widget.product.imagen!,// Uint8List directo
+                        fit: BoxFit.cover,
+                        width: double.infinity,
+                        height: double.infinity,
+                    ) 
+                    : Container(color: Colors.grey.shade200,),
                   ),
                 )
               ),

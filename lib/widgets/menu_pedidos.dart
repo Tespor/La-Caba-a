@@ -183,6 +183,27 @@ class MenuPedidos extends StatelessWidget {
                           items: pedidoProvider.items,
                           total: pedidoProvider.totalPedido,
                         );
+                        //quiero que esta funcion se ejecute despues de imprimir el ticket
+                        pedidoProvider.limpiarCarrito();
+                        // mostrar popup de confirmación
+                        showDialog(
+                          context: context,
+                          barrierDismissible: false, // para que no lo cierre el usuario
+                          builder: (context) {
+                            // cerramos automáticamente después de 2 segundos
+                            Future.delayed(const Duration(seconds: 2), () {
+                              Navigator.of(context).pop(true);
+                            });
+
+                            return AlertDialog(
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(15),
+                              ),
+                              title: const Text("Cobrado"),
+                              content: const Text("✅ Pedido cobrado con éxito"),
+                            );
+                          },
+                        );
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromARGB(255, 4, 177, 4),

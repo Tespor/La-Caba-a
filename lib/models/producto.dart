@@ -1,10 +1,12 @@
+import 'dart:typed_data';
+
 class Producto {
   int? id;
   final String nombre;
   final double precio;
   final String? descripcion;
   final int categoriaId;
-  final String? imagen;
+  final Uint8List? imagen;
 
   Producto({this.id, required this.nombre, required this.precio, this.descripcion, required this.categoriaId, this.imagen});
 
@@ -15,18 +17,18 @@ class Producto {
       'precio': precio,
       'descripcion': descripcion,
       'categoria_id': categoriaId,
-      'imagen': imagen,
+      'imagen': imagen, // Uint8List se guarda como BLOB
     };
   }
 
   factory Producto.fromMap(Map<String, dynamic> map) {
     return Producto(
-      id: map['id'],
-      nombre: map['nombre'],
-      precio: (map['precio'] as num).toDouble(),
-      descripcion: map['descripcion'],
-      categoriaId: map['categoria_id'],
-      imagen: map['imagen'],
+      id: map['id'] as int?,
+      nombre: map['nombre'] as String,
+      precio: map['precio'] as double,
+      descripcion: map['descripcion'] as String?,
+      categoriaId: map['categoria_id'] as int,
+      imagen: map['imagen'] != null ? map['imagen'] as Uint8List : null,
     );
   }
 }

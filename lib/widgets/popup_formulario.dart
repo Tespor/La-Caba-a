@@ -1,9 +1,6 @@
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:la_cabana/models/consumible.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:path/path.dart' as p;
 import 'package:la_cabana/models/producto.dart';
 import 'package:la_cabana/db/database_helper.dart';
 import 'package:provider/provider.dart';
@@ -38,7 +35,7 @@ class _FormularioProductoState extends State<_FormularioProducto> {
   String? _nombre;
   double? _precio;
   String? _descripcion;
-  String? _imagenPath;
+  Uint8List? _imagenBytes;
 
   bool _guardando = false;
 
@@ -50,14 +47,13 @@ class _FormularioProductoState extends State<_FormularioProducto> {
     final pickedFile = await picker.pickImage(source: ImageSource.gallery);
     if (pickedFile == null) return;
 
-    final appDir = await getApplicationDocumentsDirectory();
-    final fileName = p.basename(pickedFile.path);
-    final savedImage = await File(pickedFile.path).copy('${appDir.path}/$fileName');
+    final bytes = await pickedFile.readAsBytes();
 
     setState(() {
-      _imagenPath = savedImage.path;
+      _imagenBytes = bytes;
     });
   }
+
 
   Future<void> _guardarProducto() async {
     if (!_formKey.currentState!.validate()) return;
@@ -66,12 +62,12 @@ class _FormularioProductoState extends State<_FormularioProducto> {
     setState(() => _guardando = true);
 
     final producto = Producto(
-      id: widget.producto?.id, // 👈 importante
+      id: widget.producto?.id,
       nombre: _nombre!,
       precio: _precio!,
       descripcion: _descripcion,
       categoriaId: globals.globalCategoriaSeleccionadaId,
-      imagen: _imagenPath,
+      imagen: _imagenBytes, // ✅ ahora son bytes
     );
 
     final consumiblesConCantidad = consumiblesSeleccionados.entries
@@ -106,7 +102,7 @@ class _FormularioProductoState extends State<_FormularioProducto> {
     _nombre = widget.producto!.nombre;
     _precio = widget.producto!.precio;
     _descripcion = widget.producto!.descripcion;
-    _imagenPath = widget.producto!.imagen;
+    _imagenBytes = widget.producto!.imagen;
   }
   }
 
@@ -129,20 +125,25 @@ class _FormularioProductoState extends State<_FormularioProducto> {
                   children: [
                     GestureDetector(
                       onTap: _pickImage,
-                      child: _imagenPath == null
-                          ? MouseRegion(
-                              cursor: SystemMouseCursors.click,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  borderRadius: BorderRadius.circular(18),
-                                  color: const Color.fromARGB(47, 0, 0, 0),
-                                ),
-                                width: 100,
-                                height: 100,
-                                child: const Icon(Icons.camera_alt, size: 40),
-                              ),
-                            )
-                          : Image.file(File(_imagenPath!), width: 100, height: 100, fit: BoxFit.cover),
+                      child: _imagenBytes == null
+                      ? MouseRegion(
+                          cursor: SystemMouseCursors.click,
+                          child: Container(
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(18),
+                              color: const Color.fromARGB(47, 0, 0, 0),
+                            ),
+                            width: 100,
+                            height: 100,
+                            child: const Icon(Icons.camera_alt, size: 40),
+                          ),
+                        )
+                      : Image.memory(
+                          _imagenBytes!,
+                          width: 100,
+                          height: 100,
+                          fit: BoxFit.cover,
+                        ),
                     ),
                     SizedBox(height: 18),
                     TextFormField(
