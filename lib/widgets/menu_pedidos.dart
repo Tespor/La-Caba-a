@@ -151,7 +151,7 @@ class MenuPedidos extends StatelessWidget {
                     child: Text(
                       "Total: \$${pedido.totalPedido.toStringAsFixed(2)}",
                       style: const TextStyle(
-                        fontSize: 18,
+                        fontSize: 24,
                         fontWeight: FontWeight.bold,
                         color: Color.fromARGB(255, 230, 31, 17),
                       ),
@@ -178,7 +178,18 @@ class MenuPedidos extends StatelessWidget {
                         final pedidoProvider = context.read<PedidoProvider>();
                         final pedidoId = await pedidoProvider.cobrarPedido();
 
-                        await imprimirTicketEpson(
+                        if (pedidoId == -1) {
+                          // No hay productos en el pedido
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('No hay productos en el pedido'),
+                              duration: Duration(seconds: 2),
+                            ),
+                          );
+                          return;
+                        }
+
+                        await imprimirTicket(
                           pedidoId: pedidoId,
                           items: pedidoProvider.items,
                           total: pedidoProvider.totalPedido,
@@ -188,19 +199,170 @@ class MenuPedidos extends StatelessWidget {
                         // mostrar popup de confirmación
                         showDialog(
                           context: context,
-                          barrierDismissible: false, // para que no lo cierre el usuario
+                          barrierDismissible: false,
+                          barrierColor: Colors.black.withOpacity(0.7), // Fondo más suave
                           builder: (context) {
-                            // cerramos automáticamente después de 2 segundos
-                            Future.delayed(const Duration(seconds: 2), () {
-                              Navigator.of(context).pop(true);
+                            // Auto-cerrar después de 2.5 segundos
+                            Future.delayed(const Duration(milliseconds: 2500), () {
+                              if (Navigator.canPop(context)) {
+                                Navigator.of(context).pop(true);
+                              }
                             });
 
-                            return AlertDialog(
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(15),
+                            return Dialog(
+                              elevation: 0,
+                              backgroundColor: Colors.transparent,
+                              child: Container(
+                                padding: const EdgeInsets.all(24),
+                                decoration: BoxDecoration(
+                                  gradient: LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Colors.green.shade50,
+                                      Colors.white,
+                                      Colors.green.shade50,
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(24),
+                                  border: Border.all(
+                                    color: Colors.green.shade200,
+                                    width: 1,
+                                  ),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.green.withOpacity(0.15),
+                                      blurRadius: 20,
+                                      offset: const Offset(0, 10),
+                                    ),
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.05),
+                                      blurRadius: 40,
+                                      offset: const Offset(0, 20),
+                                    ),
+                                  ],
+                                ),
+                                child: Column(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    // Icono animado
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0.0, end: 1.0),
+                                      duration: const Duration(milliseconds: 600),
+                                      curve: Curves.elasticOut,
+                                      builder: (context, value, child) {
+                                        return Transform.scale(
+                                          scale: value,
+                                          child: Container(
+                                            width: 80,
+                                            height: 80,
+                                            decoration: BoxDecoration(
+                                              gradient: LinearGradient(
+                                                colors: [
+                                                  Colors.green.shade400,
+                                                  Colors.green.shade600,
+                                                ],
+                                              ),
+                                              shape: BoxShape.circle,
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.green.withOpacity(0.3),
+                                                  blurRadius: 15,
+                                                  offset: const Offset(0, 5),
+                                                ),
+                                              ],
+                                            ),
+                                            child: const Icon(
+                                              Icons.check_rounded,
+                                              color: Colors.white,
+                                              size: 40,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    
+                                    const SizedBox(height: 20),
+                                    
+                                    // Título con animación
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0.0, end: 1.0),
+                                      duration: const Duration(milliseconds: 800),
+                                      curve: Curves.easeOutBack,
+                                      builder: (context, value, child) {
+                                        return Opacity(
+                                          opacity: value.clamp(0.0, 1.0),
+                                          child: Transform.translate(
+                                            offset: Offset(0, 20 * (1 - value)),
+                                            child: Text(
+                                              "¡Cobrado!",
+                                              style: TextStyle(
+                                                fontSize: 28,
+                                                fontWeight: FontWeight.bold,
+                                                color: Colors.green.shade700,
+                                                letterSpacing: 0.5,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    
+                                    const SizedBox(height: 12),
+                                    
+                                    // Mensaje con animación
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0.0, end: 1.0),
+                                      duration: const Duration(milliseconds: 1000),
+                                      curve: Curves.easeOut,
+                                      builder: (context, value, child) {
+                                        return Opacity(
+                                          opacity: value.clamp(0.0, 1.0),
+                                          child: Transform.translate(
+                                            offset: Offset(0, 15 * (1 - value)),
+                                            child: Text(
+                                              "Pedido cobrado con éxito",
+                                              style: TextStyle(
+                                                fontSize: 16,
+                                                color: Colors.grey.shade600,
+                                                fontWeight: FontWeight.w500,
+                                              ),
+                                              textAlign: TextAlign.center,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                    
+                                    const SizedBox(height: 20),
+                                    
+                                    // Barra de progreso animada
+                                    TweenAnimationBuilder<double>(
+                                      tween: Tween(begin: 0.0, end: 1.0),
+                                      duration: const Duration(milliseconds: 2500),
+                                      curve: Curves.linear,
+                                      builder: (context, value, child) {
+                                        return Container(
+                                          height: 4,
+                                          decoration: BoxDecoration(
+                                            borderRadius: BorderRadius.circular(2),
+                                            color: Colors.green.shade100,
+                                          ),
+                                          child: LinearProgressIndicator(
+                                            value: value,
+                                            backgroundColor: Colors.transparent,
+                                            valueColor: AlwaysStoppedAnimation<Color>(
+                                              Colors.green.shade400,
+                                            ),
+                                            borderRadius: BorderRadius.circular(2),
+                                          ),
+                                        );
+                                      },
+                                    ),
+                                  ],
+                                ),
                               ),
-                              title: const Text("Cobrado"),
-                              content: const Text("✅ Pedido cobrado con éxito"),
                             );
                           },
                         );

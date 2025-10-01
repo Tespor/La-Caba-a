@@ -10,6 +10,8 @@ class Administrador extends StatefulWidget {
 }
 
 class _AdministradorState extends State<Administrador> {
+  final graficaKey = GlobalKey<GraficaState>();
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -45,7 +47,7 @@ class _AdministradorState extends State<Administrador> {
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(16),
-                          child: HistorialPedidos()
+                          child: HistorialPedidos(graficaKey: graficaKey)
                           ),
                       ),
                     ),
@@ -67,7 +69,7 @@ class _AdministradorState extends State<Administrador> {
                         child: Center(
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
-                            child: Grafica()
+                            child: Grafica(key: graficaKey)
                             ),
                         ),
                       ),

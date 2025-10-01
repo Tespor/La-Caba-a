@@ -74,7 +74,10 @@ class _HoverGlowCardState extends State<HoverGlowCard> {
 
           if (!agregado) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('No hay consumibles suficientes para este producto')),
+              const SnackBar(
+                content: Text('No hay consumibles suficientes para este producto'),
+                duration: Duration(seconds: 2),
+              ),
             );
           }
         },

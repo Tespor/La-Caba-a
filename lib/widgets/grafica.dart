@@ -2,13 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:la_cabana/db/database_helper.dart';
 
 class Grafica extends StatefulWidget {
-  const Grafica({super.key});
+
+  const Grafica({Key? key}) : super(key: key);
 
   @override
-  State<Grafica> createState() => _GraficaState();
+  State<Grafica> createState() => GraficaState();
 }
 
-class _GraficaState extends State<Grafica> {
+class GraficaState extends State<Grafica> {
   List<Map<String, dynamic>> ventas = [];
   int? el100deVentas;
 
@@ -24,6 +25,10 @@ class _GraficaState extends State<Grafica> {
       ventas = data;
       el100deVentas = data.isNotEmpty ? data[0]['total'] as int? : null;
     });
+  }
+  // método público para refrescar desde afuera
+  void recargar()  {
+    _cargarDatos();
   }
 
   double calcularPorcentaje(int total) {

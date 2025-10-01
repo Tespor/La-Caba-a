@@ -3,9 +3,14 @@ import 'package:intl/intl.dart';
 import 'package:la_cabana/db/database_helper.dart';
 import 'package:la_cabana/models/pedido.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
+import 'package:la_cabana/models/producto_pedido.dart';
+import 'package:la_cabana/widgets/ticket_printer.dart';
+import 'package:la_cabana/widgets/grafica.dart';
 
 class HistorialPedidos extends StatefulWidget {
-  const HistorialPedidos({super.key});
+  final GlobalKey<GraficaState> graficaKey;
+
+  const HistorialPedidos({super.key, required this.graficaKey});
 
   @override
   State<HistorialPedidos> createState() => _HistorialPedidosState();
@@ -355,7 +360,7 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                                               Icon(
                                                 _getEstadoIcon(p.estado),
                                                 color: _getEstadoColor(p.estado),
-                                                size: 16,
+                                                size: 18,
                                               ),
                                               const SizedBox(width: 6),
                                               Flexible(
@@ -410,6 +415,23 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
+                                  IconButton(
+                                    onPressed: () async {
+                                      final rows = await _lineas( p.id!,);
+                                      final items = rows.map((row) => PedidoItem.fromMap(row)).toList();
+                                      imprimirTicket(
+                                        pedidoId: p.id!,
+                                        items: items, 
+                                        total: p.total,
+                                      );
+                                    },
+                                    icon: Icon(
+                                      Icons.print_rounded,
+                                      color: Colors.blue.shade600,
+                                      size: 22,
+                                    ),
+                                  ),
+
                                   if (corteSeleccionado == null && p.estado != 'cancelado')
                                     IconButton(
                                       icon: Icon(Icons.cancel_rounded, 
@@ -654,6 +676,7 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                   );
                   _reload();
                   _loadCortes();
+                  widget.graficaKey.currentState?.recargar();
                 } else {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('No hay pedidos para cerrar')),

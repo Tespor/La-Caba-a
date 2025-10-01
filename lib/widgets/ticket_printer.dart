@@ -13,7 +13,7 @@ Future<img.Image> loadLogo() async {
   return img.decodeImage(Uint8List.view(data.buffer))!;
 }
 
-Future<void> imprimirTicketEpson({
+Future<void> imprimirTicket({
   required int pedidoId,
   required List<PedidoItem> items,
   required double total,

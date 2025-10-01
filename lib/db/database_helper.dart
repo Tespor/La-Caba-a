@@ -24,8 +24,10 @@ class DatabaseHelper {
   }
 
   Future<Database> _initDB(String filePath) async {
-    final dbPath = await getApplicationDocumentsDirectory();
+    final dbPath = await getApplicationSupportDirectory();
     final path = join(dbPath.path, filePath);
+
+    print("📁 Ruta base de datos: $path");
 
     final exists = await File(path).exists();
 
@@ -403,25 +405,41 @@ class DatabaseHelper {
   }
 
   //Pedidos
-  Future<int> insertarPedido(
-    Pedido pedido,
-    List<PedidoProducto> productos,
-  ) async {
+  Future<int> insertarPedido( Pedido pedido, List<PedidoProducto> productos,) async {
     final db = await instance.database;
 
-    // Guardamos en transacción
     return await db.transaction((txn) async {
-      // Insertar pedido
+      // 1️⃣ Insertar pedido
       final pedidoId = await txn.insert('pedidos', pedido.toMap());
 
-      // Insertar productos del pedido
+      // 2️⃣ Insertar productos del pedido y actualizar consumibles
       for (var p in productos) {
+        // Insertar producto en pedido_productos
         await txn.insert('pedido_productos', {
           'pedido_id': pedidoId,
           'producto_id': p.productoId,
           'cantidad': p.cantidad,
           'precio_unitario': p.precioUnitario,
         });
+
+        // Obtener consumibles asociados al producto
+        final consumiblesProducto = await txn.query(
+          'productos_consumibles',
+          where: 'id_producto = ?',
+          whereArgs: [p.productoId],
+        );
+
+        // Restar la cantidad usada de cada consumible
+        for (var c in consumiblesProducto) {
+          final idConsumible = c['id_consumible'] as int;
+          final cantidadRequerida = (c['cantidad'] as int) * p.cantidad;
+
+          // Actualizar stock del consumible
+          await txn.rawUpdate(
+            'UPDATE consumibles SET cantidad = cantidad - ? WHERE id = ?',
+            [cantidadRequerida, idConsumible],
+          );
+        }
       }
 
       return pedidoId;
@@ -585,14 +603,17 @@ class DatabaseHelper {
     final db = await instance.database;
 
     final result = await db.rawQuery('''
-      SELECT pp.producto_id, pe.estado, pr.nombre AS nombre_producto, SUM(pp.cantidad) AS total
-      FROM pedidos pe
-      JOIN pedido_productos pp ON pe.id = pp.pedido_id
+      SELECT 
+          pr.id AS producto_id,
+          pr.nombre AS nombre_producto,
+          SUM(pp.cantidad) AS total
+      FROM cortes c
+      JOIN pedidos pe ON pe.corte_id = c.id
+      JOIN pedido_productos pp ON pp.pedido_id = pe.id
       JOIN productos pr ON pr.id = pp.producto_id
-      WHERE pe.corte = 1
+      WHERE c.id = (SELECT MAX(id) FROM cortes)
         AND pe.estado = 'pagado'
-        AND pe.id IN (SELECT id FROM pedidos WHERE corte = 1)
-      GROUP BY pp.producto_id, pr.nombre
+      GROUP BY pr.id, pr.nombre
       ORDER BY total DESC;
     ''');
 
@@ -636,8 +657,51 @@ class DatabaseHelper {
         where: 'id IN ($placeholders)',
         whereArgs: ids,
       );
-
       return count;
     });
+  }
+
+  // 🔽 Descontar stock al agregar producto al carrito/pedido
+  Future<void> descontarConsumiblesDeProducto(int productoId, int cantidad) async {
+    final db = await instance.database;
+
+    // obtener los consumibles requeridos
+    final consumibles = await db.query(
+      'productos_consumibles',
+      where: 'id_producto = ?',
+      whereArgs: [productoId],
+    );
+
+    for (var c in consumibles) {
+      final idConsumible = c['id_consumible'] as int;
+      final requerido = (c['cantidad'] as int) * cantidad;
+
+      await db.rawUpdate(
+        'UPDATE consumibles SET cantidad = cantidad - ? WHERE id = ?',
+        [requerido, idConsumible],
+      );
+    }
+  }
+
+  // 🔽 Devolver stock al eliminar producto del carrito/pedido
+  Future<void> devolverConsumiblesDeProducto(int productoId, int cantidad) async {
+    final db = await instance.database;
+
+    // obtener los consumibles requeridos
+    final consumibles = await db.query(
+      'productos_consumibles',
+      where: 'id_producto = ?',
+      whereArgs: [productoId],
+    );
+
+    for (var c in consumibles) {
+      final idConsumible = c['id_consumible'] as int;
+      final requerido = (c['cantidad'] as int) * cantidad;
+
+      await db.rawUpdate(
+        'UPDATE consumibles SET cantidad = cantidad + ? WHERE id = ?',
+        [requerido, idConsumible],
+      );
+    }
   }
 }
