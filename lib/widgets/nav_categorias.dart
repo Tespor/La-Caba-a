@@ -28,6 +28,7 @@ class _HorizontalRectListState extends State<HorizontalRectList> {
   @override
   void initState() {
     super.initState();
+    globals.globalCategoriaSeleccionadaId = 0;
     _inicializarDatos();
   }
 
