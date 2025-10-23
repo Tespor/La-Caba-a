@@ -3,9 +3,14 @@ import 'package:la_cabana/controladores/providers/controlar_producto_pedido.dart
 import 'package:la_cabana/widgets/ticket_printer.dart';
 import 'package:provider/provider.dart';
 
-class MenuPedidos extends StatelessWidget {
+class MenuPedidos extends StatefulWidget {
   const MenuPedidos({super.key});
 
+  @override
+  State<MenuPedidos> createState() => _MenuPedidosState();
+}
+
+class _MenuPedidosState extends State<MenuPedidos> {
   @override
   Widget build(BuildContext context) {
     final pedido = Provider.of<PedidoProvider>(context);
@@ -175,197 +180,65 @@ class MenuPedidos extends StatelessWidget {
                   ),
                   ElevatedButton(
                     onPressed: () async {
-                        final pedidoProvider = context.read<PedidoProvider>();
-                        final pedidoId = await pedidoProvider.cobrarPedido();
+                      if (pedido.items.isEmpty) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No hay productos en el pedido'),
+                            duration: Duration(seconds: 2),
+                          ),
+                        );
+                        return;
+                      }
 
-                        if (pedidoId == -1) {
-                          // No hay productos en el pedido
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('No hay productos en el pedido'),
-                              duration: Duration(seconds: 2),
-                            ),
+                      final controllerMonto = TextEditingController();
+                      controllerMonto.text = pedido.totalPedido.toStringAsFixed(2);
+                      controllerMonto.selection = TextSelection(
+                        baseOffset: 0,
+                        extentOffset: controllerMonto.text.length,
+                      );
+                      double? pagoCliente;
+
+                      // 🔹 Mostrar modal para ingresar pago
+                      await showDialog(
+                        context: context,
+                        barrierDismissible: false,
+                        builder: (context) {
+                          return _DialogoPagoAnimado(
+                            controllerMonto: controllerMonto,
+                            totalPedido: pedido.totalPedido,
+                            onPagoConfirmado: (pago) {
+                              pagoCliente = pago;
+                            },
                           );
-                          return;
-                        }
+                        },
+                      );
 
-                        await imprimirTicket(
-                          pedidoId: pedidoId,
-                          items: pedidoProvider.items,
-                          total: pedidoProvider.totalPedido,
-                        );
-                        //quiero que esta funcion se ejecute despues de imprimir el ticket
-                        pedidoProvider.limpiarCarrito();
-                        // mostrar popup de confirmación
-                        showDialog(
-                          context: context,
-                          barrierDismissible: false,
-                          barrierColor: Colors.black.withOpacity(0.7), // Fondo más suave
-                          builder: (context) {
-                            // Auto-cerrar después de 2.5 segundos
-                            Future.delayed(const Duration(milliseconds: 2500), () {
-                              if (Navigator.canPop(context)) {
-                                Navigator.of(context).pop(true);
-                              }
-                            });
+                      // 🔹 Si no ingresó nada, salimos
+                      if (pagoCliente == null) return;
 
-                            return Dialog(
-                              elevation: 0,
-                              backgroundColor: Colors.transparent,
-                              child: Container(
-                                padding: const EdgeInsets.all(24),
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                    colors: [
-                                      Colors.green.shade50,
-                                      Colors.white,
-                                      Colors.green.shade50,
-                                    ],
-                                  ),
-                                  borderRadius: BorderRadius.circular(24),
-                                  border: Border.all(
-                                    color: Colors.green.shade200,
-                                    width: 1,
-                                  ),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: Colors.green.withOpacity(0.15),
-                                      blurRadius: 20,
-                                      offset: const Offset(0, 10),
-                                    ),
-                                    BoxShadow(
-                                      color: Colors.black.withOpacity(0.05),
-                                      blurRadius: 40,
-                                      offset: const Offset(0, 20),
-                                    ),
-                                  ],
-                                ),
-                                child: Column(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    // Icono animado
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: const Duration(milliseconds: 600),
-                                      curve: Curves.elasticOut,
-                                      builder: (context, value, child) {
-                                        return Transform.scale(
-                                          scale: value,
-                                          child: Container(
-                                            width: 80,
-                                            height: 80,
-                                            decoration: BoxDecoration(
-                                              gradient: LinearGradient(
-                                                colors: [
-                                                  Colors.green.shade400,
-                                                  Colors.green.shade600,
-                                                ],
-                                              ),
-                                              shape: BoxShape.circle,
-                                              boxShadow: [
-                                                BoxShadow(
-                                                  color: Colors.green.withOpacity(0.3),
-                                                  blurRadius: 15,
-                                                  offset: const Offset(0, 5),
-                                                ),
-                                              ],
-                                            ),
-                                            child: const Icon(
-                                              Icons.check_rounded,
-                                              color: Colors.white,
-                                              size: 40,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    
-                                    const SizedBox(height: 20),
-                                    
-                                    // Título con animación
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: const Duration(milliseconds: 800),
-                                      curve: Curves.easeOutBack,
-                                      builder: (context, value, child) {
-                                        return Opacity(
-                                          opacity: value.clamp(0.0, 1.0),
-                                          child: Transform.translate(
-                                            offset: Offset(0, 20 * (1 - value)),
-                                            child: Text(
-                                              "¡Cobrado!",
-                                              style: TextStyle(
-                                                fontSize: 28,
-                                                fontWeight: FontWeight.bold,
-                                                color: Colors.green.shade700,
-                                                letterSpacing: 0.5,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    
-                                    const SizedBox(height: 12),
-                                    
-                                    // Mensaje con animación
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: const Duration(milliseconds: 1000),
-                                      curve: Curves.easeOut,
-                                      builder: (context, value, child) {
-                                        return Opacity(
-                                          opacity: value.clamp(0.0, 1.0),
-                                          child: Transform.translate(
-                                            offset: Offset(0, 15 * (1 - value)),
-                                            child: Text(
-                                              "Pedido cobrado con éxito",
-                                              style: TextStyle(
-                                                fontSize: 16,
-                                                color: Colors.grey.shade600,
-                                                fontWeight: FontWeight.w500,
-                                              ),
-                                              textAlign: TextAlign.center,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                    
-                                    const SizedBox(height: 20),
-                                    
-                                    // Barra de progreso animada
-                                    TweenAnimationBuilder<double>(
-                                      tween: Tween(begin: 0.0, end: 1.0),
-                                      duration: const Duration(milliseconds: 2500),
-                                      curve: Curves.linear,
-                                      builder: (context, value, child) {
-                                        return Container(
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            borderRadius: BorderRadius.circular(2),
-                                            color: Colors.green.shade100,
-                                          ),
-                                          child: LinearProgressIndicator(
-                                            value: value,
-                                            backgroundColor: Colors.transparent,
-                                            valueColor: AlwaysStoppedAnimation<Color>(
-                                              Colors.green.shade400,
-                                            ),
-                                            borderRadius: BorderRadius.circular(2),
-                                          ),
-                                        );
-                                      },
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
+                      final pedidoProvider = context.read<PedidoProvider>();
+                      final pedidoId = await pedidoProvider.cobrarPedido(pagoCliente!);
+
+                      if (pedidoId == -1) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('No hay productos en el pedido'),
+                            duration: Duration(seconds: 2),
+                          ),
                         );
+                        return;
+                      }
+
+                      // 🔹 Imprimir ticket
+                      await imprimirTicket(
+                        pedidoId: pedidoId,
+                        items: pedidoProvider.items,
+                        total: pedidoProvider.totalPedido,
+                        pagoCliente: pagoCliente!,
+                      );
+
+                      // 🔹 Limpiar carrito
+                      pedidoProvider.limpiarCarrito();
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color.fromARGB(255, 4, 177, 4),
@@ -377,12 +250,216 @@ class MenuPedidos extends StatelessWidget {
                       "Cobrar",
                       style: TextStyle(color: Colors.white),
                     ),
-                  ),
+                  )
                 ],
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+// 🎬 Widget del diálogo animado
+class _DialogoPagoAnimado extends StatefulWidget {
+  final TextEditingController controllerMonto;
+  final double totalPedido;
+  final Function(double) onPagoConfirmado;
+
+  const _DialogoPagoAnimado({
+    required this.controllerMonto,
+    required this.totalPedido,
+    required this.onPagoConfirmado,
+  });
+
+  @override
+  State<_DialogoPagoAnimado> createState() => _DialogoPagoAnimadoState();
+}
+
+class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
+  double cambio = 0.0;
+  bool mostrandoExito = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Calcular cambio inicial
+    final montoInicial = double.tryParse(widget.controllerMonto.text) ?? 0;
+    cambio = montoInicial - widget.totalPedido;
+  }
+
+  Future<void> _procesarPago() async {
+    final text = widget.controllerMonto.text.trim();
+    if (text.isEmpty) return;
+
+    final pago = double.tryParse(text);
+    if (pago == null) return;
+
+    // Validar que el pago sea suficiente
+    if (pago < widget.totalPedido) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'El pago debe ser mayor o igual al total del pedido (\$${widget.totalPedido.toStringAsFixed(2)})',
+          ),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
+    // Mostrar pantalla de éxito
+    setState(() {
+      mostrandoExito = true;
+    });
+
+    // Esperar 2 segundos antes de cerrar
+    await Future.delayed(const Duration(milliseconds: 2000));
+
+    if (mounted) {
+      widget.onPagoConfirmado(pago);
+      Navigator.pop(context);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Dialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: AnimatedSwitcher(
+        duration: const Duration(milliseconds: 400),
+        transitionBuilder: (Widget child, Animation<double> animation) {
+          return FadeTransition(
+            opacity: animation,
+            child: ScaleTransition(
+              scale: Tween<double>(begin: 0.8, end: 1.0).animate(animation),
+              child: child,
+            ),
+          );
+        },
+        child: mostrandoExito
+            ? _construirPantallaExito()
+            : _construirFormularioPago(),
+      ),
+    );
+  }
+
+  Widget _construirFormularioPago() {
+    return IntrinsicWidth(
+      child: Container(
+        key: const ValueKey('formulario'),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text(
+              "Ingresar pago del cliente",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: widget.controllerMonto,
+              autofocus: true,
+              keyboardType: TextInputType.number,
+              decoration: const InputDecoration(
+                labelText: "Monto recibido",
+                prefixIcon: Icon(Icons.attach_money),
+                border: OutlineInputBorder(),
+              ),
+              onChanged: (value) {
+                final pagoCliente = double.tryParse(value) ?? 0;
+                setState(() {
+                  cambio = pagoCliente - widget.totalPedido;
+                });
+              },
+              onSubmitted: (_) => _procesarPago(),
+            ),
+            const SizedBox(height: 18),
+            Align(
+              alignment: Alignment.centerLeft,
+              child: Text(
+                cambio >= 0
+                    ? "Cambio: \$${cambio.toStringAsFixed(2)}"
+                    : "Faltan: \$${(-cambio).toStringAsFixed(2)}",
+                style: TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.bold,
+                  color: cambio >= 0 ? Colors.green : Colors.red,
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text("Cancelar"),
+                ),
+                const SizedBox(width: 12),
+                ElevatedButton(
+                  onPressed: _procesarPago,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color.fromARGB(255, 4, 177, 4),
+                  ),
+                  child: const Text(
+                    "Aceptar",
+                    style: TextStyle(color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _construirPantallaExito() {
+    return Container(
+      key: const ValueKey('exito'),
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            Colors.green.shade50,
+            Colors.white,
+            Colors.green.shade50,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(
+            Icons.check_circle,
+            size: 80,
+            color: Colors.green,
+          ),
+          const SizedBox(height: 16),
+          const Text(
+            "¡Cobrado!",
+            style: TextStyle(
+              fontSize: 28,
+              fontWeight: FontWeight.bold,
+              color: Colors.green,
+            ),
+          ),
+          const SizedBox(height: 8),
+          const Text(
+            "Pedido cobrado con éxito",
+            style: TextStyle(fontSize: 16),
+          ),
+        ],
       ),
     );
   }

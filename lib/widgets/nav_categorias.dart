@@ -55,16 +55,53 @@ class _HorizontalRectListState extends State<HorizontalRectList> {
     });
   }
 
+  // Future<void> _cargarProductos() async {
+  //   final productos = await DatabaseHelper.instance.getProductosPorCategoria(
+  //     categories[0].id!,
+  //   );
+  //   if (!mounted) return;
+  //   Provider.of<ProductoxCategoriaProvider>(
+  //     context,
+  //     listen: false,
+  //   ).setProductos(productos);
+  // }
+
   Future<void> _cargarProductos() async {
+    int categoriaId = globals.globalCategoriaSeleccionadaId;
+
+    if (categoriaId == 0 && categories.isNotEmpty) {
+      // Si nunca se seleccionó, toma la primera
+      categoriaId = categories[0].id!;
+      globals.globalCategoriaSeleccionadaId = categoriaId;
+      _selectedIndex = 0;
+    } else {
+      // Si ya había un global seleccionado, busca su índice
+      final index = categories.indexWhere((c) => c.id == categoriaId);
+      if (index != -1) {
+        _selectedIndex = index;
+      } else {
+        // Si la categoría ya no existe, caemos en la primera
+        categoriaId = categories[0].id!;
+        globals.globalCategoriaSeleccionadaId = categoriaId;
+        _selectedIndex = 0;
+      }
+    }
+
     final productos = await DatabaseHelper.instance.getProductosPorCategoria(
-      categories[0].id!,
+      categoriaId,
     );
+
     if (!mounted) return;
     Provider.of<ProductoxCategoriaProvider>(
       context,
       listen: false,
     ).setProductos(productos);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _setIndicatorPosition(_selectedIndex);
+    });
   }
+
 
   Future<void> _actualizarProductosPorCategoria(int index) async {
     setState(() => _selectedIndex = index);

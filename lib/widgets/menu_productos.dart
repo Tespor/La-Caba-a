@@ -107,6 +107,15 @@ class _HoverGlowCardState extends State<HoverGlowCard> {
           );
 
           if (selected == 'actualizar') {
+
+            final existenPedidos = Provider.of<PedidoProvider>(context, listen: false).items.isNotEmpty;
+            if (existenPedidos) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("No se puede actualizar el producto mientras hay pedidos activos")),
+              );
+              return;
+            }
+
             final actualizado = await mostrarMenuModal(
               context,
               producto: widget.product,

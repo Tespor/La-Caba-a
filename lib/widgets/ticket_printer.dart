@@ -17,6 +17,7 @@ Future<void> imprimirTicket({
   required int pedidoId,
   required List<PedidoItem> items,
   required double total,
+  required double pagoCliente,
 }) async {
   final profile = await CapabilityProfile.load();
   final generator = Generator(PaperSize.mm80, profile);
@@ -48,6 +49,19 @@ Future<void> imprimirTicket({
       PosColumn(text: '\$${item.total.toStringAsFixed(2)}', width: 4, styles: PosStyles(align: PosAlign.right)),
     ]);
   }
+  bytes += generator.hr();
+
+  bytes += generator.text(
+    'Pago con: \$${pagoCliente.toStringAsFixed(2)}',
+    styles: PosStyles(align: PosAlign.right, bold: true),
+  );
+
+  final cambio = pagoCliente - total;
+
+  bytes += generator.text(
+    'Su cambio: \$${cambio.toStringAsFixed(2)}',
+    styles: PosStyles(align: PosAlign.right, bold: true),
+  );
 
   bytes += generator.hr();
   bytes += generator.text(

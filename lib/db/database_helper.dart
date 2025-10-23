@@ -123,6 +123,7 @@ class DatabaseHelper {
       CREATE TABLE pedidos (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         total REAL NOT NULL,
+        pago_cliente REAL NOT NULL,
         fecha TEXT DEFAULT CURRENT_TIMESTAMP,
         estado TEXT DEFAULT 'pendiente',
         corte BOOLEAN DEFAULT FALSE,
@@ -518,6 +519,19 @@ class DatabaseHelper {
     return result;
   }
 
+  Future<double> obtenerTotalVentasActual() async {
+    final db = await instance.database;
+
+    final result = await db.rawQuery('''
+      SELECT SUM(total) as total
+      FROM pedidos
+      WHERE estado = 'pagado' AND corte_id IS NULL
+    ''');
+
+    return (result.first['total'] as num?)?.toDouble() ?? 0.0;
+  }
+
+
   Future<int> cancelarPedido(int id) async {
     final db = await instance.database;
     return await db.update(
@@ -599,6 +613,27 @@ class DatabaseHelper {
     return idCorte;
   }
 
+  // Future<List<Map<String, dynamic>>> obtenerVentasTotalesProductos() async {
+  //   final db = await instance.database;
+
+  //   final result = await db.rawQuery('''
+  //     SELECT 
+  //         pr.id AS producto_id,
+  //         pr.nombre AS nombre_producto,
+  //         SUM(pp.cantidad) AS total
+  //     FROM cortes c
+  //     JOIN pedidos pe ON pe.corte_id = c.id
+  //     JOIN pedido_productos pp ON pp.pedido_id = pe.id
+  //     JOIN productos pr ON pr.id = pp.producto_id
+  //     WHERE c.id = (SELECT MAX(id) FROM cortes)
+  //       AND pe.estado = 'pagado'
+  //     GROUP BY pr.id, pr.nombre
+  //     ORDER BY total DESC;
+  //   ''');
+
+  //   return result;
+  // }
+
   Future<List<Map<String, dynamic>>> obtenerVentasTotalesProductos() async {
     final db = await instance.database;
 
@@ -606,7 +641,8 @@ class DatabaseHelper {
       SELECT 
           pr.id AS producto_id,
           pr.nombre AS nombre_producto,
-          SUM(pp.cantidad) AS total
+          SUM(pp.cantidad) AS total,
+          SUM(pp.cantidad * pp.precio_unitario) AS total_dinero
       FROM cortes c
       JOIN pedidos pe ON pe.corte_id = c.id
       JOIN pedido_productos pp ON pp.pedido_id = pe.id
@@ -614,11 +650,12 @@ class DatabaseHelper {
       WHERE c.id = (SELECT MAX(id) FROM cortes)
         AND pe.estado = 'pagado'
       GROUP BY pr.id, pr.nombre
-      ORDER BY total DESC;
+      ORDER BY total_dinero DESC;
     ''');
 
     return result;
   }
+
 
   // Eliminar pedidos con más de 30 días de antigüedad
   Future<int> eliminarPedidosAntiguos() async {

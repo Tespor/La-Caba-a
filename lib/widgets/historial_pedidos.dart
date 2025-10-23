@@ -5,6 +5,7 @@ import 'package:la_cabana/models/pedido.dart';
 import 'package:dropdown_button2/dropdown_button2.dart';
 import 'package:la_cabana/models/producto_pedido.dart';
 import 'package:la_cabana/widgets/ticket_printer.dart';
+import 'package:la_cabana/widgets/ticket_corte.dart';
 import 'package:la_cabana/widgets/grafica.dart';
 
 class HistorialPedidos extends StatefulWidget {
@@ -22,17 +23,26 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
   int? corteSeleccionado; // ID del corte seleccionado
   double? corteTotalSeleccionado;
   String corteFechaSeleccionado = '';
+  double totalVentasActual = 0.0;
 
   @override
   void initState() {
     super.initState();
     _reload();
     _loadCortes();
+    _loadTotalVentasActual();
   }
 
   void _reload() {
     _future = DatabaseHelper.instance.obtenerPedidosActivos();
     setState(() {});
+  }
+
+  Future<void> _loadTotalVentasActual() async {
+    final total = await DatabaseHelper.instance.obtenerTotalVentasActual();
+    setState(() {
+      totalVentasActual = total;
+    });
   }
 
   Future<void> _loadCortes() async {
@@ -56,6 +66,7 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
     } else {
       _reload();
     }
+    _loadTotalVentasActual();
   }
 
   Future<List<Map<String, dynamic>>> _lineas(int pedidoId) {
@@ -319,11 +330,31 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                               subtitle: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Pago del cliente
+                                  Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Icon(Icons.request_page_rounded, 
+                                          color: Colors.green.shade500, size: 18),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        'Pago del cliente: \$${p.pagoCliente.toStringAsFixed(2)}',
+                                        style: TextStyle(
+                                          color: Colors.green.shade500,
+                                          fontWeight: FontWeight.w600,
+                                          fontSize: 15,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+
+                                  const SizedBox(height: 6),
+
                                   // Total del pedido
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.attach_money, 
+                                      Icon(Icons.attach_money_sharp, 
                                           color: Colors.green.shade700, size: 18),
                                       const SizedBox(width: 4),
                                       Text(
@@ -423,6 +454,7 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                                         pedidoId: p.id!,
                                         items: items, 
                                         total: p.total,
+                                        pagoCliente: p.pagoCliente,
                                       );
                                     },
                                     icon: Icon(
@@ -654,52 +686,101 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
             padding: const EdgeInsets.all(18),
             alignment: Alignment.centerRight,
             child: corteSeleccionado == null 
-            ? TextButton.icon(
-              style: ButtonStyle(
-                padding: WidgetStatePropertyAll(const EdgeInsets.symmetric(horizontal: 12, vertical: 14)),
-                backgroundColor: WidgetStatePropertyAll(const Color.fromARGB(255, 8, 170, 13)),
-              ),
-              label: const Text(
-                'Cerrar corte',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w300,
+                ? Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      // 🔹 Total acumulado actual
+                      Text(
+                        'TOTAL VENDIDO: \$${totalVentasActual.toStringAsFixed(2)}',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          color: Color.fromARGB(178, 16, 145, 4),
+                        ),
+                      ),
+                      // 🔹 Botón cerrar corte
+                      TextButton.icon(
+                        style: ButtonStyle(
+                          padding: WidgetStatePropertyAll(const EdgeInsets.symmetric(horizontal: 12, vertical: 14)),
+                          backgroundColor: WidgetStatePropertyAll(const Color.fromARGB(255, 8, 170, 13)),
+                        ),
+                        label: const Text(
+                          'Cerrar corte',
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.white,
+                            fontWeight: FontWeight.w300,
+                          ),
+                        ),
+                        icon: const Icon(Icons.check, color: Colors.white),
+                        onPressed: () async {
+                          final totalAntes = totalVentasActual;
+                          final idCorte = await DatabaseHelper.instance.cerrarCorte();
+                          if (idCorte != null) {
+                            showDialog(
+                              context: context, 
+                              builder: (context) => AlertDialog(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                ),
+                                title: Row(
+                                  children: [
+                                    Icon(Icons.check_circle_rounded, 
+                                        color: Colors.green.shade600),
+                                    const SizedBox(width: 8),
+                                    const Text("Corte cerrado"),
+                                  ],
+                                ),
+                                content: Text(
+                                  "El corte ha sido cerrado exitosamente.\nTotal vendido: \$${totalAntes.toStringAsFixed(2)}",
+                                  style: const TextStyle(fontSize: 16),
+                                ),
+                                actions: [
+                                  ElevatedButton(
+                                    onPressed: () {
+                                      _reload();
+                                      _loadCortes();
+                                      _loadTotalVentasActual();
+                                      Navigator.of(context).pop();
+                                    },
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: Colors.green.shade600,
+                                      foregroundColor: Colors.white,
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                    ),
+                                    child: const Text("Aceptar"),
+                                  ),
+                                ],
+                              ),
+                            );
+                            widget.graficaKey.currentState?.recargar();
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(content: Text('No hay pedidos para cerrar')),
+                            );
+                          }
+                        },
+                      ),
+                    ],
+                  )
+                : Container(
+                    padding: const EdgeInsets.all(8.0),
+                    decoration: BoxDecoration(
+                      color: const Color.fromARGB(255, 8, 131, 14),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      '\$ TOTAL:   \$${corteTotalSeleccionado?.toStringAsFixed(2) ?? '0.00'}',
+                      style: const TextStyle(
+                        fontSize: 16,
+                        color: Colors.white,
+                        fontWeight: FontWeight.w400,
+                      ),
+                    ),
                   ),
-              ),
-              icon: const Icon(Icons.check, color: Colors.white),
-              onPressed: () async {
-                final idCorte = await DatabaseHelper.instance.cerrarCorte();
-                if (idCorte != null) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Corte cerrado (ID: $idCorte)')),
-                  );
-                  _reload();
-                  _loadCortes();
-                  widget.graficaKey.currentState?.recargar();
-                } else {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('No hay pedidos para cerrar')),
-                  );
-                }
-              },
-            )
-            : Container(
-              padding: const EdgeInsets.all(8.0),
-              decoration: BoxDecoration(
-                color: const Color.fromARGB(255, 8, 131, 14),
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: Text(
-                '\$ TOTAL:   \$${corteTotalSeleccionado?.toStringAsFixed(2) ?? '0.00'}',
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.white,
-                  fontWeight: FontWeight.w400,
-                ),
-              ),
             ),
-          ),
         ],
       ),
     );

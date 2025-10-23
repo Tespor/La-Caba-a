@@ -7,9 +7,11 @@ import 'package:la_cabana/db/database_helper.dart';
 
 class PedidoProvider with ChangeNotifier {
   final List<PedidoItem> _items = [];
+  
   int? _ultimoPedidoId;
 
   List<PedidoItem> get items => _items;
+
   int? get ultimoPedidoId => _ultimoPedidoId;
 
 
@@ -115,7 +117,7 @@ class PedidoProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<int> cobrarPedido() async {
+  Future<int> cobrarPedido(pagoDelCliente) async {
     if (_items.isEmpty) {
       return -1;
     }
@@ -124,6 +126,7 @@ class PedidoProvider with ChangeNotifier {
 
     final pedido = Pedido(
       total: total,
+      pagoCliente: pagoDelCliente,
       fecha: DateTime.now().toIso8601String(),
       estado: 'pagado',
     );

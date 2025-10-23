@@ -1,12 +1,14 @@
 class Pedido {
   final int? id;
   final double total;
+  final double pagoCliente;
   final String fecha;
   final String estado; // pendiente, pagado, cancelado
 
   Pedido({
     this.id,
     required this.total,
+    required this.pagoCliente,
     required this.fecha,
     this.estado = 'pendiente',
   });
@@ -15,6 +17,7 @@ class Pedido {
     return {
       'id': id,
       'total': total,
+      'pago_cliente': pagoCliente,
       'fecha': fecha,
       'estado': estado,
     };
@@ -24,6 +27,7 @@ class Pedido {
     return Pedido(
       id: map['id'],
       total: map['total'],
+      pagoCliente: map['pago_cliente'],
       fecha: map['fecha'],
       estado: map['estado'],
     );
