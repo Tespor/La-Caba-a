@@ -40,7 +40,20 @@ class DatabaseHelper {
       );
       await File(path).writeAsBytes(bytes, flush: true);
     }
-    return await openDatabase(path);
+    final db = await openDatabase(path);
+    await _agregarColumnaReferencia(db);//Verificar si la columna 'referencia' existe y agregarla si no
+
+    return db;
+  }
+
+  Future<void> _agregarColumnaReferencia(Database db) async {
+    final res = await db.rawQuery("PRAGMA table_info(pedidos);");
+    final existe = res.any((columna) => columna['name'] == 'referencia');
+
+    if (!existe) {
+      print("🧱 Agregando columna 'referencia' a la tabla pedidos...");
+      await db.execute("ALTER TABLE pedidos ADD COLUMN referencia TEXT;");
+    }
   }
 
   //para usar la base de datos desde la carpeta .dart_tool
@@ -652,7 +665,6 @@ class DatabaseHelper {
       GROUP BY pr.id, pr.nombre
       ORDER BY total_dinero DESC;
     ''');
-
     return result;
   }
 

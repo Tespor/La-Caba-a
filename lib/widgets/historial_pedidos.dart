@@ -334,7 +334,7 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.request_page_rounded, 
+                                      Icon(Icons.request_page_rounded,
                                           color: Colors.green.shade500, size: 18),
                                       const SizedBox(width: 4),
                                       Text(
@@ -350,11 +350,50 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
 
                                   const SizedBox(height: 6),
 
+                                  // 🔹 Si tiene referencia → pagado con tarjeta
+                                  // 🔹 Si no tiene → mostrar cambio
+                                  if (p.referencia != null && p.referencia!.isNotEmpty)
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.credit_card_rounded,
+                                            color: Colors.blue.shade600, size: 18),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Pagado con tarjeta: ${p.referencia}',
+                                          style: TextStyle(
+                                            color: Colors.blue.shade600,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    )
+                                  else
+                                    Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(Icons.attach_money_rounded,
+                                            color: Colors.orange.shade700, size: 18),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Cambio: \$${(p.pagoCliente - p.total).toStringAsFixed(2)}',
+                                          style: TextStyle(
+                                            color: Colors.orange.shade700,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 15,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+
+                                  const SizedBox(height: 6),
+
                                   // Total del pedido
                                   Row(
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Icon(Icons.attach_money_sharp, 
+                                      Icon(Icons.attach_money_sharp,
                                           color: Colors.green.shade700, size: 18),
                                       const SizedBox(width: 4),
                                       Text(
@@ -367,13 +406,12 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                                       ),
                                     ],
                                   ),
-                                  
+
                                   const SizedBox(height: 12),
-                                  
+
                                   // Estado y Fecha en una fila
                                   Row(
                                     children: [
-                                      // Estado
                                       Expanded(
                                         flex: 2,
                                         child: Container(
@@ -409,10 +447,9 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                                           ),
                                         ),
                                       ),
-                                      
+
                                       const SizedBox(width: 12),
-                                      
-                                      // Fecha
+
                                       Expanded(
                                         flex: 3,
                                         child: Row(
@@ -442,7 +479,7 @@ class _HistorialPedidosState extends State<HistorialPedidos> {
                                   ),
                                 ],
                               ),
-                              
+
                               trailing: Row(
                                 mainAxisSize: MainAxisSize.min,
                                 children: [

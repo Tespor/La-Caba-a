@@ -199,7 +199,7 @@ class _MenuPedidosState extends State<MenuPedidos> {
                       double? pagoCliente;
 
                       // 🔹 Mostrar modal para ingresar pago
-                      await showDialog(
+                      final resultado = await showDialog(
                         context: context,
                         barrierDismissible: false,
                         builder: (context) {
@@ -213,11 +213,18 @@ class _MenuPedidosState extends State<MenuPedidos> {
                         },
                       );
 
+                      final referencia = resultado?["referencia"];
+                      //final esTarjeta = resultado?["esTarjeta"] ?? false;
+
                       // 🔹 Si no ingresó nada, salimos
                       if (pagoCliente == null) return;
 
                       final pedidoProvider = context.read<PedidoProvider>();
-                      final pedidoId = await pedidoProvider.cobrarPedido(pagoCliente!);
+                      final pedidoId = await pedidoProvider.cobrarPedido(
+                        pagoCliente!,
+                        referencia: referencia, // 🔹 se envía aquí
+                      );
+
 
                       if (pedidoId == -1) {
                         ScaffoldMessenger.of(context).showSnackBar(
@@ -281,6 +288,9 @@ class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
   double cambio = 0.0;
   bool mostrandoExito = false;
 
+  bool pagoConTarjeta = false; // 🔹 nuevo: controla si se selecciona tarjeta
+  final TextEditingController referenciaController = TextEditingController(); // 🔹 para número de referencia
+
   @override
   void initState() {
     super.initState();
@@ -296,6 +306,17 @@ class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
     final pago = double.tryParse(text);
     if (pago == null) return;
 
+    // 🔹 Validar referencia si es pago con tarjeta
+    if (pagoConTarjeta && referenciaController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor ingresa el número de referencia.'),
+          duration: Duration(seconds: 2),
+        ),
+      );
+      return;
+    }
+
     // Validar que el pago sea suficiente
     if (pago < widget.totalPedido) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -303,7 +324,7 @@ class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
           content: Text(
             'El pago debe ser mayor o igual al total del pedido (\$${widget.totalPedido.toStringAsFixed(2)})',
           ),
-          duration: Duration(seconds: 2),
+          duration: const Duration(seconds: 2),
         ),
       );
       return;
@@ -319,7 +340,10 @@ class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
 
     if (mounted) {
       widget.onPagoConfirmado(pago);
-      Navigator.pop(context);
+      Navigator.pop(context, {
+        "referencia": pagoConTarjeta ? referenciaController.text.trim() : null,
+        "esTarjeta": pagoConTarjeta,
+      });
     }
   }
 
@@ -363,9 +387,33 @@ class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
               ),
             ),
             const SizedBox(height: 20),
+
+            // 🔹 Checkbox de pago con tarjeta
+            CheckboxListTile(
+              title: const Text("Pago con tarjeta"),
+              value: pagoConTarjeta,
+              onChanged: (valor) {
+                setState(() {
+                  pagoConTarjeta = valor ?? false;
+                  if (pagoConTarjeta) {
+                    widget.controllerMonto.text =
+                        widget.totalPedido.toStringAsFixed(2);
+                    cambio = 0.0; // no hay cambio en tarjeta
+                  } else {
+                    widget.controllerMonto.clear();
+                    referenciaController.clear();
+                  }
+                });
+              },
+              controlAffinity: ListTileControlAffinity.leading,
+            ),
+
+            const SizedBox(height: 10),
+
+            // 🔹 Campo de monto
             TextField(
               controller: widget.controllerMonto,
-              autofocus: true,
+              enabled: !pagoConTarjeta, // 🔹 deshabilitado si es con tarjeta
               keyboardType: TextInputType.number,
               decoration: const InputDecoration(
                 labelText: "Monto recibido",
@@ -380,20 +428,39 @@ class _DialogoPagoAnimadoState extends State<_DialogoPagoAnimado> {
               },
               onSubmitted: (_) => _procesarPago(),
             ),
-            const SizedBox(height: 18),
-            Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                cambio >= 0
-                    ? "Cambio: \$${cambio.toStringAsFixed(2)}"
-                    : "Faltan: \$${(-cambio).toStringAsFixed(2)}",
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: cambio >= 0 ? Colors.green : Colors.red,
+
+            const SizedBox(height: 16),
+
+            // 🔹 Campo de referencia (solo visible si es con tarjeta)
+            if (pagoConTarjeta)
+              TextField(
+                controller: referenciaController,
+                keyboardType: TextInputType.text,
+                decoration: const InputDecoration(
+                  labelText: "Número de referencia",
+                  prefixIcon: Icon(Icons.credit_card),
+                  border: OutlineInputBorder(),
                 ),
               ),
-            ),
+
+            const SizedBox(height: 18),
+
+            // 🔹 Mostrar cambio (solo si no es con tarjeta)
+            if (!pagoConTarjeta)
+              Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  cambio >= 0
+                      ? "Cambio: \$${cambio.toStringAsFixed(2)}"
+                      : "Faltan: \$${(-cambio).toStringAsFixed(2)}",
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: cambio >= 0 ? Colors.green : Colors.red,
+                  ),
+                ),
+              ),
+
             const SizedBox(height: 24),
             Row(
               mainAxisAlignment: MainAxisAlignment.end,

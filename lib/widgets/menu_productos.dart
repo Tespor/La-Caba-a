@@ -3,7 +3,7 @@ import 'package:la_cabana/controladores/providers/controlar_producto_pedido.dart
 import 'package:la_cabana/models/producto.dart';
 import 'package:la_cabana/controladores/providers/producto_por_categoria_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:la_cabana/widgets/popup_formulario.dart';
+import 'package:la_cabana/widgets/popup_formulario_add_product.dart';
 
 
 class ProductosGrid extends StatelessWidget {

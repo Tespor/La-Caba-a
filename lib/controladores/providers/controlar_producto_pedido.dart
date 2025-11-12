@@ -117,7 +117,7 @@ class PedidoProvider with ChangeNotifier {
     notifyListeners();
   }
 
-  Future<int> cobrarPedido(pagoDelCliente) async {
+  Future<int> cobrarPedido(double pagoDelCliente, {String? referencia}) async {
     if (_items.isEmpty) {
       return -1;
     }
@@ -129,6 +129,7 @@ class PedidoProvider with ChangeNotifier {
       pagoCliente: pagoDelCliente,
       fecha: DateTime.now().toIso8601String(),
       estado: 'pagado',
+      referencia: referencia, // 🔹 Se asigna aquí
     );
 
     final lineas = _items.map((i) {
